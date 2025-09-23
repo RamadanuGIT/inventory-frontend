@@ -3,18 +3,30 @@ import axios from "axios";
 
 const Inventory = () => {
   const [items, setItems] = useState([]);
-  const [form, setForm] = useState({ kode: "", nama: "", satuan: "", stockAwal: 0 });
+  const [form, setForm] = useState({
+    kode: "",
+    nama: "",
+    satuan: "",
+    stockAwal: 0,
+  });
   const [editMode, setEditMode] = useState(false);
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState("kode");
   const [sortAsc, setSortAsc] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [stockModal, setStockModal] = useState({ open: false, itemId: null, type: "masuk", jumlah: 0 });
+  const [stockModal, setStockModal] = useState({
+    open: false,
+    itemId: null,
+    type: "masuk",
+    jumlah: 0,
+  });
 
   // Fetch items
   const fetchItems = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/items");
+      const res = await axios.get(
+        "https://inventory-backend-production-b369.up.railway.app/api/items"
+      );
       setItems(res.data.items);
     } catch (err) {
       console.error(err);
@@ -30,10 +42,16 @@ const Inventory = () => {
     e.preventDefault();
     try {
       if (editMode) {
-        await axios.put(`http://localhost:5000/api/items/${form.id}`, form);
+        await axios.put(
+          `https://inventory-backend-production-b369.up.railway.app/api/items/${form.id}`,
+          form
+        );
         setEditMode(false);
       } else {
-        await axios.post("http://localhost:5000/api/items", form);
+        await axios.post(
+          "https://inventory-backend-production-b369.up.railway.app/api/items",
+          form
+        );
       }
       setForm({ kode: "", nama: "", satuan: "", stockAwal: 0 });
       setModalOpen(false);
@@ -47,7 +65,9 @@ const Inventory = () => {
   const handleDelete = async (id) => {
     if (!id) return;
     try {
-      await axios.delete(`http://localhost:5000/api/items/${id}`);
+      await axios.delete(
+        `https://inventory-backend-production-b369.up.railway.app/api/items/${id}`
+      );
       fetchItems();
     } catch (err) {
       console.error(err);
@@ -66,7 +86,10 @@ const Inventory = () => {
   const handleStockSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/api/items/stock", stockModal);
+      await axios.post(
+        "https://inventory-backend-production-b369.up.railway.app/api/items/stock",
+        stockModal
+      );
       setStockModal({ open: false, itemId: null, type: "masuk", jumlah: 0 });
       fetchItems();
     } catch (err) {
@@ -107,7 +130,11 @@ const Inventory = () => {
           onChange={(e) => setSearch(e.target.value)}
         />
         <button
-          onClick={() => { setModalOpen(true); setEditMode(false); setForm({ kode: "", nama: "", satuan: "", stockAwal: 0 }); }}
+          onClick={() => {
+            setModalOpen(true);
+            setEditMode(false);
+            setForm({ kode: "", nama: "", satuan: "", stockAwal: 0 });
+          }}
           className="bg-blue-500 text-white px-4 py-2 rounded"
         >
           Tambah Item
@@ -118,7 +145,9 @@ const Inventory = () => {
       {modalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white p-4 rounded w-80">
-            <h2 className="text-lg font-bold mb-2">{editMode ? "Edit Item" : "Tambah Item"}</h2>
+            <h2 className="text-lg font-bold mb-2">
+              {editMode ? "Edit Item" : "Tambah Item"}
+            </h2>
             <form onSubmit={handleSubmit} className="flex flex-col gap-2">
               <input
                 className="border p-2 rounded"
@@ -146,7 +175,9 @@ const Inventory = () => {
                 type="number"
                 placeholder="Stock Awal"
                 value={form.stockAwal}
-                onChange={(e) => setForm({ ...form, stockAwal: Number(e.target.value) })}
+                onChange={(e) =>
+                  setForm({ ...form, stockAwal: Number(e.target.value) })
+                }
                 required
               />
               <div className="flex justify-end gap-2 mt-2">
@@ -157,7 +188,10 @@ const Inventory = () => {
                 >
                   Batal
                 </button>
-                <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
+                <button
+                  type="submit"
+                  className="bg-blue-500 text-white px-4 py-2 rounded"
+                >
                   Simpan
                 </button>
               </div>
@@ -170,25 +204,42 @@ const Inventory = () => {
       {stockModal.open && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white p-4 rounded w-72">
-            <h2 className="text-lg font-bold mb-2">Stock {stockModal.type === "masuk" ? "Masuk" : "Keluar"}</h2>
+            <h2 className="text-lg font-bold mb-2">
+              Stock {stockModal.type === "masuk" ? "Masuk" : "Keluar"}
+            </h2>
             <form onSubmit={handleStockSubmit} className="flex flex-col gap-2">
               <input
                 type="number"
                 className="border p-2 rounded"
                 placeholder="Jumlah"
                 value={stockModal.jumlah}
-                onChange={(e) => setStockModal({ ...stockModal, jumlah: Number(e.target.value) })}
+                onChange={(e) =>
+                  setStockModal({
+                    ...stockModal,
+                    jumlah: Number(e.target.value),
+                  })
+                }
                 required
               />
               <div className="flex justify-end gap-2 mt-2">
                 <button
                   type="button"
-                  onClick={() => setStockModal({ open: false, itemId: null, type: "masuk", jumlah: 0 })}
+                  onClick={() =>
+                    setStockModal({
+                      open: false,
+                      itemId: null,
+                      type: "masuk",
+                      jumlah: 0,
+                    })
+                  }
                   className="px-4 py-2 rounded border"
                 >
                   Batal
                 </button>
-                <button type="submit" className="bg-green-500 text-white px-4 py-2 rounded">
+                <button
+                  type="submit"
+                  className="bg-green-500 text-white px-4 py-2 rounded"
+                >
                   Submit
                 </button>
               </div>
@@ -208,7 +259,9 @@ const Inventory = () => {
                   className="border border-gray-300 px-4 py-2 cursor-pointer"
                   onClick={() => handleSort(key)}
                 >
-                  {key === "stockAwal" ? "Stock" : key.charAt(0).toUpperCase() + key.slice(1)}
+                  {key === "stockAwal"
+                    ? "Stock"
+                    : key.charAt(0).toUpperCase() + key.slice(1)}
                   {sortKey === key ? (sortAsc ? " ▲" : " ▼") : ""}
                 </th>
               ))}
@@ -218,10 +271,18 @@ const Inventory = () => {
           <tbody>
             {sortedItems.map((item) => (
               <tr key={item.id} className="hover:bg-gray-50">
-                <td className="border border-gray-300 px-4 py-2">{item.kode}</td>
-                <td className="border border-gray-300 px-4 py-2">{item.nama}</td>
-                <td className="border border-gray-300 px-4 py-2">{item.satuan}</td>
-                <td className="border border-gray-300 px-4 py-2">{item.stockAwal}</td>
+                <td className="border border-gray-300 px-4 py-2">
+                  {item.kode}
+                </td>
+                <td className="border border-gray-300 px-4 py-2">
+                  {item.nama}
+                </td>
+                <td className="border border-gray-300 px-4 py-2">
+                  {item.satuan}
+                </td>
+                <td className="border border-gray-300 px-4 py-2">
+                  {item.stockAwal}
+                </td>
                 <td className="border border-gray-300 px-4 py-2 flex gap-2">
                   <button
                     className="bg-yellow-400 px-2 py-1 rounded"
@@ -231,13 +292,27 @@ const Inventory = () => {
                   </button>
                   <button
                     className="bg-green-500 text-white px-2 py-1 rounded"
-                    onClick={() => setStockModal({ open: true, itemId: item.id, type: "masuk", jumlah: 0 })}
+                    onClick={() =>
+                      setStockModal({
+                        open: true,
+                        itemId: item.id,
+                        type: "masuk",
+                        jumlah: 0,
+                      })
+                    }
                   >
                     Masuk
                   </button>
                   <button
                     className="bg-red-500 text-white px-2 py-1 rounded"
-                    onClick={() => setStockModal({ open: true, itemId: item.id, type: "keluar", jumlah: 0 })}
+                    onClick={() =>
+                      setStockModal({
+                        open: true,
+                        itemId: item.id,
+                        type: "keluar",
+                        jumlah: 0,
+                      })
+                    }
                   >
                     Keluar
                   </button>

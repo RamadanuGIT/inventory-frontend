@@ -35,9 +35,12 @@ const Report = () => {
         startDate: startDate || undefined,
         endDate: endDate || undefined,
       };
-      const res = await axios.get("http://localhost:5000/api/stock-logs", {
-        params,
-      });
+      const res = await axios.get(
+        "https://inventory-backend-production-b369.up.railway.app/api/stock-logs",
+        {
+          params,
+        }
+      );
       setLogs(res.data.logs || []);
     } catch (err) {
       console.error(err);
