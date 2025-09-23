@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 
 const Inventory = () => {
-  const API = import.meta.env.VITE_API_BASE;
+  const API = import.meta.env.VITE_API_URL;
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({
     kode: "",
@@ -26,9 +26,16 @@ const Inventory = () => {
   const fetchItems = async () => {
     try {
       const res = await axios.get(`${API}/api/items`);
-      setItems(res.data.items);
+      const data = res.data;
+      if (data && Array.isArray(data.items)) {
+        setItems(data.items);
+      } else {
+        console.error("Unexpected response", data);
+        setItems([]); // fallback supaya tidak crash
+      }
     } catch (err) {
       console.error(err);
+      setItems([]);
     }
   };
 

@@ -11,7 +11,7 @@ import "jspdf-autotable";
 import autoTable from "jspdf-autotable";
 
 const Report = () => {
-  const API = import.meta.env.VITE_API_BASE;
+  const API = import.meta.env.VITE_API_URL;
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
 
