@@ -11,6 +11,7 @@ import "jspdf-autotable";
 import autoTable from "jspdf-autotable";
 
 const Report = () => {
+  const API = import.meta.env.VITE_API_BASE;
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -35,12 +36,9 @@ const Report = () => {
         startDate: startDate || undefined,
         endDate: endDate || undefined,
       };
-      const res = await axios.get(
-        "https://inventory-backend-production-b369.up.railway.app/api/stock-logs",
-        {
-          params,
-        }
-      );
+      const res = await axios.get(`${API}/api/stock-logs`, {
+        params,
+      });
       setLogs(res.data.logs || []);
     } catch (err) {
       console.error(err);

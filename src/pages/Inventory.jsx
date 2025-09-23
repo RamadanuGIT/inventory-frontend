@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 
 const Inventory = () => {
+  const API = import.meta.env.VITE_API_BASE;
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({
     kode: "",
@@ -24,9 +25,7 @@ const Inventory = () => {
   // Fetch items
   const fetchItems = async () => {
     try {
-      const res = await axios.get(
-        "https://inventory-backend-production-b369.up.railway.app/api/items"
-      );
+      const res = await axios.get(`${API}/api/items`);
       setItems(res.data.items);
     } catch (err) {
       console.error(err);
@@ -42,16 +41,10 @@ const Inventory = () => {
     e.preventDefault();
     try {
       if (editMode) {
-        await axios.put(
-          `https://inventory-backend-production-b369.up.railway.app/api/items/${form.id}`,
-          form
-        );
+        await axios.put(`${API}/api/items/${form.id}`, form);
         setEditMode(false);
       } else {
-        await axios.post(
-          "https://inventory-backend-production-b369.up.railway.app/api/items",
-          form
-        );
+        await axios.post(`${API}/api/items`, form);
       }
       setForm({ kode: "", nama: "", satuan: "", stockAwal: 0 });
       setModalOpen(false);
@@ -65,9 +58,7 @@ const Inventory = () => {
   const handleDelete = async (id) => {
     if (!id) return;
     try {
-      await axios.delete(
-        `https://inventory-backend-production-b369.up.railway.app/api/items/${id}`
-      );
+      await axios.delete(`${API}/api/items/${id}`);
       fetchItems();
     } catch (err) {
       console.error(err);
@@ -86,10 +77,7 @@ const Inventory = () => {
   const handleStockSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(
-        "https://inventory-backend-production-b369.up.railway.app/api/items/stock",
-        stockModal
-      );
+      await axios.post(`${API}/api/items/stock`, stockModal);
       setStockModal({ open: false, itemId: null, type: "masuk", jumlah: 0 });
       fetchItems();
     } catch (err) {
