@@ -187,7 +187,7 @@ export default function Dashboard() {
 
       {/* Modal Low Stock / Stagnant */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg w-96 max-h-[80vh] overflow-auto p-6">
             <h3 className="text-xl font-bold mb-4">{modalTitle}</h3>
             <ul className="space-y-2">
