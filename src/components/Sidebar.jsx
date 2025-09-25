@@ -6,6 +6,7 @@ import {
   FaBox,
   FaChartBar,
   FaCog,
+  FaOutdent,
 } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
 
@@ -17,6 +18,7 @@ export default function Sidebar() {
     { name: "Dashboard", icon: <FaHome />, path: "/" },
     { name: "Inventory", icon: <FaBox />, path: "/inventory" },
     { name: "Reports", icon: <FaChartBar />, path: "/reports" },
+    { name: "Stock Out", icon: <FaOutdent />, path: "/keluar-stock" },
     { name: "Settings", icon: <FaCog />, path: "/setting" },
   ];
 

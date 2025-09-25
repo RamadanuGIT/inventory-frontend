@@ -97,7 +97,7 @@ export default function Dashboard() {
           highlight="red"
         />
         <StatCard
-          title="Stagnant Items (3M)"
+          title="Dead Stock"
           value={data.stagnantItemsCount}
           onClick={() => openModal("Stagnant Items", data.stagnantItems)}
           highlight="yellow"
