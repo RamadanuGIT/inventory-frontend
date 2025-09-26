@@ -52,7 +52,10 @@ export default function KeluarStok() {
         )
       );
     } else {
-      setCart([...cart, { itemId: item.id, nama: item.nama, jumlah }]);
+      setCart([
+        ...cart,
+        { itemId: item.id, nama: item.nama, jumlah, price: item.price },
+      ]);
     }
 
     setKodeInput("");
@@ -73,7 +76,11 @@ export default function KeluarStok() {
     if (cart.length === 0) return alert("Keranjang kosong");
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}/api/stock/out/batch`, {
-        items: cart.map((c) => ({ itemId: c.itemId, jumlah: c.jumlah })),
+        items: cart.map((c) => ({
+          itemId: c.itemId,
+          jumlah: c.jumlah,
+          price: c.price,
+        })),
       });
       alert("Transaksi berhasil");
       setCart([]);
@@ -109,7 +116,7 @@ export default function KeluarStok() {
 
       {/* Input kode */}
       <div className="flex flex-col mb-4 relative">
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             placeholder="Masukkan kode atau nama item..."
@@ -128,7 +135,7 @@ export default function KeluarStok() {
           />
           <button
             onClick={addToCart}
-            className="bg-green-500 text-white px-4 rounded hover:bg-green-600"
+            className="bg-green-500 text-white px-4 rounded hover:bg-green-600 "
           >
             Tambah
           </button>
@@ -147,7 +154,8 @@ export default function KeluarStok() {
               >
                 <p className="font-semibold">{item.nama}</p>
                 <p className="text-sm text-gray-600">
-                  Kode: {item.kode} | Stok: {item.stockAwal}
+                  Kode: {item.kode} | Stok: {item.stockAwal} | Price:{" "}
+                  {item.price}
                 </p>
               </div>
             ))}
@@ -164,6 +172,7 @@ export default function KeluarStok() {
               <tr className="border-b">
                 <th className="p-1 text-left">Nama</th>
                 <th className="p-1 text-center">Jumlah</th>
+                <th className="p-1 text-center">HET</th>
                 <th className="p-1">Aksi</th>
               </tr>
             </thead>
@@ -183,6 +192,12 @@ export default function KeluarStok() {
                     />
                   </td>
                   <td className="p-1 text-center">
+                    {new Intl.NumberFormat("en-SG", {
+                      style: "currency",
+                      currency: "SGD",
+                    }).format(c.price * c.jumlah)}
+                  </td>
+                  <td className="p-1 text-center">
                     <button
                       onClick={() => removeFromCart(c.itemId)}
                       className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
@@ -198,6 +213,13 @@ export default function KeluarStok() {
           <div className="flex justify-between items-center mt-2">
             <span className="font-semibold">
               Total Item: {cart.reduce((sum, c) => sum + c.jumlah, 0)}
+            </span>
+            <span className="font-semibold">
+              Total Harga:{" "}
+              {new Intl.NumberFormat("en-SG", {
+                style: "currency",
+                currency: "SGD",
+              }).format(cart.reduce((sum, c) => sum + c.price * c.jumlah, 0))}
             </span>
             <button
               onClick={handleCheckout}

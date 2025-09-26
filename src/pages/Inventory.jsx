@@ -4,11 +4,14 @@ import axios from "axios";
 const Inventory = () => {
   const API = import.meta.env.VITE_API_URL;
   const [items, setItems] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // jumlah item per halaman
   const [form, setForm] = useState({
     kode: "",
     nama: "",
     satuan: "",
-    stockAwal: 0,
+    stockAwal: null,
+    price: null,
   });
   const [editMode, setEditMode] = useState(false);
   const [search, setSearch] = useState("");
@@ -19,7 +22,7 @@ const Inventory = () => {
     open: false,
     itemId: null,
     type: "masuk",
-    jumlah: 0,
+    jumlah: null,
   });
 
   // Fetch items
@@ -53,7 +56,7 @@ const Inventory = () => {
       } else {
         await axios.post(`${API}/api/items`, form);
       }
-      setForm({ kode: "", nama: "", satuan: "", stockAwal: 0 });
+      setForm({ kode: "", nama: "", satuan: "", stockAwal: null, price: null });
       setModalOpen(false);
       fetchItems();
     } catch (err) {
@@ -85,7 +88,7 @@ const Inventory = () => {
     e.preventDefault();
     try {
       await axios.post(`${API}/api/items/stock`, stockModal);
-      setStockModal({ open: false, itemId: null, type: "masuk", jumlah: 0 });
+      setStockModal({ open: false, itemId: null, type: "masuk", jumlah: null });
       fetchItems();
     } catch (err) {
       console.error(err);
@@ -114,6 +117,11 @@ const Inventory = () => {
     }
   };
 
+  const totalPages = Math.ceil(sortedItems.length / itemsPerPage);
+  const start = (currentPage - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  const visibleItems = sortedItems.slice(start, end);
+
   return (
     <div className="p-4 max-w-6xl mx-auto">
       {/* Header + Search + Add */}
@@ -128,7 +136,13 @@ const Inventory = () => {
           onClick={() => {
             setModalOpen(true);
             setEditMode(false);
-            setForm({ kode: "", nama: "", satuan: "", stockAwal: 0 });
+            setForm({
+              kode: "",
+              nama: "",
+              satuan: "",
+              stockAwal: null,
+              price: null,
+            });
           }}
           className="bg-blue-500 text-white px-4 py-2 rounded"
         >
@@ -138,7 +152,7 @@ const Inventory = () => {
 
       {/* Modal Add/Edit Item */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
           <div className="bg-white p-4 rounded w-80">
             <h2 className="text-lg font-bold mb-2">
               {editMode ? "Edit Item" : "Tambah Item"}
@@ -168,13 +182,24 @@ const Inventory = () => {
               <input
                 className="border p-2 rounded"
                 type="number"
-                placeholder="Stock Awal"
+                placeholder="Stock"
                 value={form.stockAwal}
                 onChange={(e) =>
                   setForm({ ...form, stockAwal: Number(e.target.value) })
                 }
                 required
               />
+              <input
+                className="border p-2 rounded"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Price"
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
+                required
+              />
+
               <div className="flex justify-end gap-2 mt-2">
                 <button
                   type="button"
@@ -248,7 +273,7 @@ const Inventory = () => {
         <table className="min-w-full border-collapse border border-gray-300">
           <thead className="bg-gray-100">
             <tr>
-              {["kode", "nama", "satuan", "stockAwal"].map((key) => (
+              {["kode", "nama", "satuan", "stock", "HET"].map((key) => (
                 <th
                   key={key}
                   className="border border-gray-300 px-4 py-2 cursor-pointer"
@@ -264,7 +289,7 @@ const Inventory = () => {
             </tr>
           </thead>
           <tbody>
-            {sortedItems.map((item) => (
+            {visibleItems.map((item) => (
               <tr key={item.id} className="hover:bg-gray-50">
                 <td className="border border-gray-300 px-4 py-2">
                   {item.kode}
@@ -278,6 +303,13 @@ const Inventory = () => {
                 <td className="border border-gray-300 px-4 py-2">
                   {item.stockAwal}
                 </td>
+                <td className="border border-gray-300 px-4 py-2">
+                  {new Intl.NumberFormat("en-SG", {
+                    style: "currency",
+                    currency: "SGD",
+                  }).format(item.price)}
+                </td>
+
                 <td className="border border-gray-300 px-4 py-2 flex gap-2">
                   <button
                     className="bg-yellow-400 px-2 py-1 rounded"
@@ -292,7 +324,7 @@ const Inventory = () => {
                         open: true,
                         itemId: item.id,
                         type: "masuk",
-                        jumlah: 0,
+                        jumlah: null,
                       })
                     }
                   >
@@ -305,7 +337,7 @@ const Inventory = () => {
                         open: true,
                         itemId: item.id,
                         type: "keluar",
-                        jumlah: 0,
+                        jumlah: null,
                       })
                     }
                   >
@@ -320,7 +352,7 @@ const Inventory = () => {
                 </td>
               </tr>
             ))}
-            {sortedItems.length === 0 && (
+            {visibleItems.length === 0 && (
               <tr>
                 <td colSpan="5" className="text-center py-4">
                   Data tidak ditemukan
@@ -329,6 +361,25 @@ const Inventory = () => {
             )}
           </tbody>
         </table>
+        <div className="flex justify-center gap-2 mt-4">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((p) => p - 1)}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <span>
+            Halaman {currentPage} / {totalPages}
+          </span>
+          <button
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((p) => p + 1)}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );
