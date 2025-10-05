@@ -105,7 +105,7 @@ const Report = () => {
     ]);
 
     autoTable(doc, {
-      head: [["Kode", "Nama", "Tipe", "Jumlah", "Tanggal"]],
+      head: [["Nama Part", "Kode Part", "Tipe", "Jumlah", "Tanggal"]],
       body: rows,
       startY: 20,
     });

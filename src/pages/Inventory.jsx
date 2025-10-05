@@ -9,9 +9,11 @@ const Inventory = () => {
   const [form, setForm] = useState({
     kode: "",
     nama: "",
-    satuan: "",
-    stockAwal: null,
+    quantity: null,
+    description: "",
+    information: "",
     price: null,
+    priceUSD: null,
   });
   const [editMode, setEditMode] = useState(false);
   const [search, setSearch] = useState("");
@@ -56,7 +58,15 @@ const Inventory = () => {
       } else {
         await axios.post(`${API}/api/items`, form);
       }
-      setForm({ kode: "", nama: "", satuan: "", stockAwal: null, price: null });
+      setForm({
+        kode: "",
+        nama: "",
+        quantity: null,
+        description: "",
+        information: "",
+        price: null,
+        priceUSD: null,
+      });
       setModalOpen(false);
       fetchItems();
     } catch (err) {
@@ -98,15 +108,21 @@ const Inventory = () => {
 
   // Sorting
   const sortedItems = [...items]
+    .map((item) => ({
+      ...item,
+      total: item.price * item.quantity,
+    }))
     .filter(
       (item) =>
-        item.kode.toLowerCase().includes(search.toLowerCase()) ||
-        item.nama.toLowerCase().includes(search.toLowerCase())
+        item.nama?.toLowerCase().includes(search.toLowerCase()) ||
+        item.kode?.toLowerCase().includes(search.toLowerCase())
     )
     .sort((a, b) => {
-      if (a[sortKey] < b[sortKey]) return sortAsc ? -1 : 1;
-      if (a[sortKey] > b[sortKey]) return sortAsc ? 1 : -1;
-      return 0;
+      const valA = a[sortKey] ?? "";
+      const valB = b[sortKey] ?? "";
+      if (typeof valA === "string" && typeof valB === "string")
+        return sortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      return sortAsc ? valA - valB : valB - valA;
     });
 
   const handleSort = (key) => {
@@ -139,9 +155,11 @@ const Inventory = () => {
             setForm({
               kode: "",
               nama: "",
-              satuan: "",
-              stockAwal: null,
+              quantity: null,
+              description: "",
+              information: "",
               price: null,
+              priceUSD: null,
             });
           }}
           className="bg-blue-500 text-white px-4 py-2 rounded"
@@ -160,33 +178,33 @@ const Inventory = () => {
             <form onSubmit={handleSubmit} className="flex flex-col gap-2">
               <input
                 className="border p-2 rounded"
-                placeholder="Kode"
-                value={form.kode}
-                onChange={(e) => setForm({ ...form, kode: e.target.value })}
-                required
-              />
-              <input
-                className="border p-2 rounded"
-                placeholder="Nama"
+                placeholder="Nama Part"
                 value={form.nama}
                 onChange={(e) => setForm({ ...form, nama: e.target.value })}
                 required
               />
               <input
                 className="border p-2 rounded"
-                placeholder="Satuan"
-                value={form.satuan}
-                onChange={(e) => setForm({ ...form, satuan: e.target.value })}
+                placeholder="Part Number"
+                value={form.kode}
+                onChange={(e) => setForm({ ...form, kode: e.target.value })}
                 required
               />
               <input
                 className="border p-2 rounded"
                 type="number"
-                placeholder="Stock"
-                value={form.stockAwal}
-                onChange={(e) =>
-                  setForm({ ...form, stockAwal: Number(e.target.value) })
-                }
+                placeholder="QTY"
+                value={form.quantity}
+                onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                required
+              />
+              <input
+                className="border p-2 rounded"
+                type="number"
+                min="0"
+                placeholder="Price IDR"
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
                 required
               />
               <input
@@ -194,10 +212,26 @@ const Inventory = () => {
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder="Price"
-                value={form.price}
-                onChange={(e) => setForm({ ...form, price: e.target.value })}
+                placeholder="Price SGP"
+                value={form.priceUSD}
+                onChange={(e) => setForm({ ...form, priceUSD: e.target.value })}
                 required
+              />
+              <input
+                className="border p-2 rounded"
+                placeholder="desc"
+                value={form.description}
+                onChange={(e) =>
+                  setForm({ ...form, description: Number(e.target.value) })
+                }
+              />
+              <input
+                className="border p-2 rounded"
+                placeholder="Info"
+                value={form.information}
+                onChange={(e) =>
+                  setForm({ ...form, information: Number(e.target.value) })
+                }
               />
 
               <div className="flex justify-end gap-2 mt-2">
@@ -273,44 +307,69 @@ const Inventory = () => {
         <table className="min-w-full border-collapse border border-gray-300">
           <thead className="bg-gray-100">
             <tr>
-              {["kode", "nama", "satuan", "stock", "HET"].map((key) => (
+              <th className="border border-gray-300 px-4 py-2">No</th>
+              {[
+                { label: "Nama Part", key: "nama" },
+                { label: "Part Number", key: "kode" },
+                { label: "QTY", key: "quantity" },
+                { label: "HARGA HET Rp @PCS", key: "price" },
+                { label: "HARGA HET SGD $ @PCS", key: "priceUSD" },
+                { label: "Total", key: "total" },
+                { label: "Description", key: "description" },
+                { label: "Information", key: "information" },
+              ].map((col) => (
                 <th
-                  key={key}
-                  className="border border-gray-300 px-4 py-2 cursor-pointer"
-                  onClick={() => handleSort(key)}
+                  key={col.key}
+                  onClick={() => handleSort(col.key)}
+                  className="border border-gray-300 px-4 py-2 cursor-pointer select-none whitespace-nowrap min-w-[150px]"
                 >
-                  {key === "stockAwal"
-                    ? "Stock"
-                    : key.charAt(0).toUpperCase() + key.slice(1)}
-                  {sortKey === key ? (sortAsc ? " ▲" : " ▼") : ""}
+                  {col.label}
+                  {sortKey === col.key && (sortAsc ? " ▲" : " ▼")}
                 </th>
               ))}
-              <th className="border border-gray-300 px-4 py-2">Aksi</th>
+              <th className="border border-gray-300 px-4 py-2">Action</th>
             </tr>
           </thead>
           <tbody>
-            {visibleItems.map((item) => (
+            {visibleItems.map((item, index) => (
               <tr key={item.id} className="hover:bg-gray-50">
-                <td className="border border-gray-300 px-4 py-2">
-                  {item.kode}
+                <td className="border border-gray-300 px-4 py-2 text-center whitespace-nowrap">
+                  {(currentPage - 1) * itemsPerPage + index + 1}
                 </td>
-                <td className="border border-gray-300 px-4 py-2">
+                <td className="border border-gray-300 px-4 py-2 whitespace-nowrap">
                   {item.nama}
                 </td>
-                <td className="border border-gray-300 px-4 py-2">
-                  {item.satuan}
+                <td className="border border-gray-300 px-4 py-2 whitespace-nowrap">
+                  {item.kode}
                 </td>
-                <td className="border border-gray-300 px-4 py-2">
-                  {item.stockAwal}
+                <td className="border border-gray-300 px-4 py-2 whitespace-nowrap">
+                  {item.quantity}
                 </td>
-                <td className="border border-gray-300 px-4 py-2">
+                <td className="border border-gray-300 px-4 py-2 whitespace-nowrap">
+                  {new Intl.NumberFormat("id-ID", {
+                    style: "currency",
+                    currency: "IDR",
+                  }).format(item.price)}
+                </td>
+                <td className="border border-gray-300 px-4 py-2 whitespace-nowrap">
                   {new Intl.NumberFormat("en-SG", {
                     style: "currency",
                     currency: "SGD",
-                  }).format(item.price)}
+                  }).format(item.priceUSD)}
                 </td>
-
-                <td className="border border-gray-300 px-4 py-2 flex gap-2">
+                <td className="border border-gray-300 px-4 py-2 whitespace-nowrap">
+                  {new Intl.NumberFormat("id-ID", {
+                    style: "currency",
+                    currency: "IDR",
+                  }).format(item.price * item.quantity)}
+                </td>
+                <td className="border border-gray-300 px-4 py-2 whitespace-nowrap">
+                  {item.description}
+                </td>
+                <td className="border border-gray-300 px-4 py-2 whitespace-nowrap">
+                  {item.information}
+                </td>
+                <td className="border border-gray-300 px-4 py-2 flex gap-2 whitespace-nowrap">
                   <button
                     className="bg-yellow-400 px-2 py-1 rounded"
                     onClick={() => handleEdit(item)}
@@ -354,13 +413,15 @@ const Inventory = () => {
             ))}
             {visibleItems.length === 0 && (
               <tr>
-                <td colSpan="5" className="text-center py-4">
+                <td colSpan="10" className="text-center py-4">
                   Data tidak ditemukan
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+
+        {/* Pagination */}
         <div className="flex justify-center gap-2 mt-4">
           <button
             disabled={currentPage === 1}

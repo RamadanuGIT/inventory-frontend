@@ -1,235 +1,242 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import axios from "axios";
 
-export default function KeluarStok() {
+export default function StockOut() {
+  const API = import.meta.env.VITE_API_URL;
+  const [search, setSearch] = useState("");
   const [items, setItems] = useState([]);
-  const [cart, setCart] = useState([]);
-  const [kodeInput, setKodeInput] = useState("");
-  const [jumlah, setJumlah] = useState(1);
-  const [matchedItems, setMatchedItems] = useState([]);
-  const [highlightIndex, setHighlightIndex] = useState(0);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [quantities, setQuantities] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
-  const jumlahRef = useRef(null);
-
-  useEffect(() => {
-    axios
-      .get(`${import.meta.env.VITE_API_URL}/api/items`)
-      .then((res) =>
-        setItems(Array.isArray(res.data) ? res.data : res.data.items || [])
-      )
-      .catch((err) => console.log(err));
-  }, []);
-
-  // Update matchedItems saat kodeInput berubah
-  useEffect(() => {
-    if (!kodeInput) return setMatchedItems([]);
-    const matches = items
-      .filter(
-        (i) =>
-          i.kode.toLowerCase().includes(kodeInput.toLowerCase()) ||
-          i.nama.toLowerCase().includes(kodeInput.toLowerCase())
-      )
-      .slice(0, 5); // batasi 5 item
-    setMatchedItems(matches);
-    setHighlightIndex(0);
-  }, [kodeInput, items]);
-
-  const selectItem = (item) => {
-    setKodeInput(item.kode);
-    setMatchedItems([]);
-    setTimeout(() => jumlahRef.current?.focus(), 0);
-  };
-
-  const addToCart = () => {
-    const item = items.find((i) => i.kode === kodeInput);
-    if (!item || jumlah < 1) return alert("Item tidak valid");
-
-    const existing = cart.find((c) => c.itemId === item.id);
-    if (existing) {
-      setCart(
-        cart.map((c) =>
-          c.itemId === item.id ? { ...c, jumlah: c.jumlah + jumlah } : c
-        )
-      );
-    } else {
-      setCart([
-        ...cart,
-        { itemId: item.id, nama: item.nama, jumlah, price: item.price },
-      ]);
-    }
-
-    setKodeInput("");
-    setJumlah(1);
-  };
-
-  const removeFromCart = (itemId) =>
-    setCart(cart.filter((c) => c.itemId !== itemId));
-  const changeQuantity = (itemId, value) => {
-    setCart(
-      cart.map((c) =>
-        c.itemId === itemId ? { ...c, jumlah: Math.max(1, value) } : c
-      )
-    );
-  };
-
-  const handleCheckout = async () => {
-    if (cart.length === 0) return alert("Keranjang kosong");
+  // 🔹 Ambil semua item
+  const fetchAllItems = async () => {
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/stock/out/batch`, {
-        items: cart.map((c) => ({
-          itemId: c.itemId,
-          jumlah: c.jumlah,
-          price: c.price,
-        })),
-      });
-      alert("Transaksi berhasil");
-      setCart([]);
-      setKodeInput("");
-      setJumlah(1);
+      setLoading(true);
+      const res = await axios.get(`${API}/api/items`);
+      setItems(res.data.items || []);
+      setShowAll(true);
     } catch (err) {
-      alert(err.response?.data?.message || "Terjadi error");
+      console.error("Gagal fetch semua item:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Keyboard navigation
-  const handleKeyDown = (e) => {
-    if (matchedItems.length === 0) return;
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setHighlightIndex((prev) => (prev + 1) % matchedItems.length);
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setHighlightIndex(
-        (prev) => (prev - 1 + matchedItems.length) % matchedItems.length
-      );
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      selectItem(matchedItems[highlightIndex]);
+  // 🔹 Cari berdasarkan keyword
+  const handleSearch = async (e) => {
+    const value = e.target.value;
+    setSearch(value);
+    setShowAll(false);
+
+    if (value.trim() === "") {
+      setItems([]);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API}/api/items/search?q=${value}`);
+      setItems(res.data.items || []);
+    } catch (err) {
+      console.error("Gagal mencari item:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🔹 Tambah atau update ke daftar keluar
+  const handleAddToSelected = (item) => {
+    const qty = Number(quantities[item.id]);
+    if (!qty || qty <= 0) {
+      alert("Masukkan jumlah keluar yang valid!");
+      return;
+    }
+
+    setSelectedItems((prev) => {
+      const exist = prev.find((i) => i.id === item.id);
+      if (exist) {
+        return prev.map((i) => (i.id === item.id ? { ...i, jumlah: qty } : i));
+      }
+      return [...prev, { ...item, jumlah: qty }];
+    });
+
+    // kosongkan input setelah ditambahkan
+    setQuantities((prev) => ({ ...prev, [item.id]: "" }));
+  };
+
+  // 🔹 Hapus dari daftar keluar
+  const handleRemoveSelected = (id) => {
+    setSelectedItems((prev) => prev.filter((i) => i.id !== id));
+  };
+
+  // 🔹 Proses batch keluar
+  const handleBatchOut = async () => {
+    if (selectedItems.length === 0) {
+      alert("Tidak ada item yang dipilih!");
+      return;
+    }
+
+    const itemsToProcess = selectedItems.map(({ id, jumlah }) => ({
+      itemId: id,
+      jumlah,
+    }));
+
+    try {
+      setProcessing(true);
+      await axios.post(`${API}/api/stock/out/batch`, {
+        items: itemsToProcess,
+      });
+
+      alert("✅ Semua stok berhasil dikurangi!");
+      setSelectedItems([]);
+      if (showAll) fetchAllItems();
+      else if (search) handleSearch({ target: { value: search } });
+    } catch (err) {
+      console.error(err);
+      alert("❌ Gagal mengurangi stok.");
+    } finally {
+      setProcessing(false);
     }
   };
 
   return (
-    <div className="p-4 max-w-xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4 text-center">
-        Mini-Market POS (Smart Autocomplete)
-      </h2>
+    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* ===================== LEFT SIDE ===================== */}
+      <div>
+        <h1 className="text-xl font-bold mb-4">📦 Semua Item</h1>
 
-      {/* Input kode */}
-      <div className="flex flex-col mb-4 relative">
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex gap-3 mb-4">
           <input
             type="text"
-            placeholder="Masukkan kode atau nama item..."
-            value={kodeInput}
-            onChange={(e) => setKodeInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="border p-2 flex-1"
-          />
-          <input
-            type="number"
-            min="1"
-            ref={jumlahRef}
-            value={jumlah}
-            onChange={(e) => setJumlah(Number(e.target.value))}
-            className="border p-2 w-24"
+            value={search}
+            onChange={handleSearch}
+            placeholder="Cari item berdasarkan kode / nama..."
+            className="border border-gray-300 rounded-lg px-4 py-2 w-1/2 focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
           <button
-            onClick={addToCart}
-            className="bg-green-500 text-white px-4 rounded hover:bg-green-600 "
+            onClick={fetchAllItems}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
           >
-            Tambah
+            Tampilkan Semua
           </button>
         </div>
 
-        {/* Autocomplete list */}
-        {matchedItems.length > 0 && (
-          <div className="absolute top-full left-0 mt-1 border bg-white shadow w-full z-10 max-h-48 overflow-y-auto">
-            {matchedItems.map((item, index) => (
-              <div
-                key={item.id}
-                className={`p-2 cursor-pointer ${
-                  highlightIndex === index ? "bg-blue-100" : ""
-                }`}
-                onClick={() => selectItem(item)}
-              >
-                <p className="font-semibold">{item.nama}</p>
-                <p className="text-sm text-gray-600">
-                  Kode: {item.kode} | Stok: {item.stockAwal} | Price:{" "}
-                  {item.price}
-                </p>
-              </div>
-            ))}
+        {loading && <p>Loading data...</p>}
+
+        {!loading && items.length > 0 && (
+          <div className="overflow-x-auto border rounded-lg max-h-[70vh] overflow-y-auto">
+            <table className="min-w-full border-collapse text-sm text-center">
+              <thead className="bg-gray-100 sticky top-0">
+                <tr>
+                  <th className="border px-3 py-2">No</th>
+                  <th className="border px-3 py-2">Nama</th>
+                  <th className="border px-3 py-2">Kode</th>
+                  <th className="border px-3 py-2">Qty Stok</th>
+                  <th className="border px-3 py-2">Keluar</th>
+                  <th className="border px-3 py-2">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, index) => {
+                  const selected = selectedItems.find((i) => i.id === item.id);
+                  return (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="border px-3 py-2">{index + 1}</td>
+                      <td className="border px-3 py-2">{item.nama}</td>
+                      <td className="border px-3 py-2">{item.kode}</td>
+                      <td className="border px-3 py-2">{item.quantity}</td>
+                      <td className="border px-3 py-2">
+                        <input
+                          type="number"
+                          min="1"
+                          value={quantities[item.id] || ""}
+                          onChange={(e) =>
+                            setQuantities((prev) => ({
+                              ...prev,
+                              [item.id]: e.target.value,
+                            }))
+                          }
+                          className="border rounded px-2 py-1 w-20 text-center"
+                        />
+                      </td>
+                      <td className="border px-3 py-2">
+                        <button
+                          onClick={() => handleAddToSelected(item)}
+                          className={`px-3 py-1 rounded text-white ${
+                            selected
+                              ? "bg-yellow-500 hover:bg-yellow-600"
+                              : "bg-green-600 hover:bg-green-700"
+                          }`}
+                        >
+                          {selected ? "Update" : "Tambah"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
-      {/* Keranjang */}
-      {cart.length > 0 && (
-        <div className="border p-3 rounded bg-gray-50 shadow">
-          <h3 className="font-bold mb-2">Keranjang</h3>
-          <table className="w-full mb-2">
-            <thead>
-              <tr className="border-b">
-                <th className="p-1 text-left">Nama</th>
-                <th className="p-1 text-center">Jumlah</th>
-                <th className="p-1 text-center">HET</th>
-                <th className="p-1">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cart.map((c) => (
-                <tr key={c.itemId} className="border-b">
-                  <td className="p-1">{c.nama}</td>
-                  <td className="p-1 text-center">
-                    <input
-                      type="number"
-                      min="1"
-                      value={c.jumlah}
-                      onChange={(e) =>
-                        changeQuantity(c.itemId, Number(e.target.value))
-                      }
-                      className="w-16 border p-1 text-center"
-                    />
-                  </td>
-                  <td className="p-1 text-center">
-                    {new Intl.NumberFormat("en-SG", {
-                      style: "currency",
-                      currency: "SGD",
-                    }).format(c.price * c.jumlah)}
-                  </td>
-                  <td className="p-1 text-center">
-                    <button
-                      onClick={() => removeFromCart(c.itemId)}
-                      className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-                    >
-                      Hapus
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* ===================== RIGHT SIDE ===================== */}
+      <div>
+        <h1 className="text-xl font-bold mb-4">🧾 Daftar Barang Keluar</h1>
 
-          <div className="flex justify-between items-center mt-2">
-            <span className="font-semibold">
-              Total Item: {cart.reduce((sum, c) => sum + c.jumlah, 0)}
-            </span>
-            <span className="font-semibold">
-              Total Harga:{" "}
-              {new Intl.NumberFormat("en-SG", {
-                style: "currency",
-                currency: "SGD",
-              }).format(cart.reduce((sum, c) => sum + c.price * c.jumlah, 0))}
-            </span>
-            <button
-              onClick={handleCheckout}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-            >
-              Checkout
-            </button>
+        {selectedItems.length === 0 ? (
+          <p className="text-gray-500 text-sm">Belum ada item yang dipilih.</p>
+        ) : (
+          <div className="overflow-x-auto border rounded-lg max-h-[70vh] overflow-y-auto">
+            <table className="min-w-full border-collapse text-sm text-center">
+              <thead className="bg-gray-100 sticky top-0">
+                <tr>
+                  <th className="border px-3 py-2">No</th>
+                  <th className="border px-3 py-2">Nama</th>
+                  <th className="border px-3 py-2">Kode</th>
+                  <th className="border px-3 py-2">Keluar</th>
+                  <th className="border px-3 py-2">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedItems.map((item, index) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="border px-3 py-2">{index + 1}</td>
+                    <td className="border px-3 py-2">{item.nama}</td>
+                    <td className="border px-3 py-2">{item.kode}</td>
+                    <td className="border px-3 py-2">{item.jumlah}</td>
+                    <td className="border px-3 py-2">
+                      <button
+                        onClick={() => handleRemoveSelected(item.id)}
+                        className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                      >
+                        ❌ Hapus
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
-      )}
+        )}
+
+        {selectedItems.length > 0 && (
+          <button
+            onClick={handleBatchOut}
+            disabled={processing}
+            className={`mt-4 w-full px-4 py-2 rounded-lg text-white transition ${
+              processing
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700"
+            }`}
+          >
+            {processing ? "Memproses..." : "Proses Semua Barang Keluar"}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
